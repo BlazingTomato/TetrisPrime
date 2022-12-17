@@ -16,21 +16,26 @@ public class Spawner : MonoBehaviour
         return blockPrefabs[UnityEngine.Random.Range(0,blockPrefabs.Length)];
     }
 
-    GameObject InstantiateBlock(GameObject newBlock, GameObject location){
+    GameObject InstantiateBlock(GameObject newBlock, GameObject location, bool offSet = true){
         newBlock.transform.parent = location.transform;
         newBlock.GetComponent<Transform>().position = location.GetComponent<Transform>().position;
-        newBlock.GetComponent<Transform>().localPosition = getOffset(newBlock);
+
+        if(offSet)
+            newBlock.GetComponent<Transform>().localPosition = getOffset(newBlock);
+        else
+            newBlock.GetComponent<Transform>().localPosition = new Vector3(0,0,0);
+
         return newBlock;
     }
 
     public GameObject putBlockOnGrid(){
         GameObject newBlock = Instantiate(getBlockPrefab(), new Vector3(0,0,0),Quaternion.identity);
-        return InstantiateBlock(newBlock, gridLocation);
+        return InstantiateBlock(newBlock, gridLocation, false);
     }
 
     public GameObject putBlockOnGrid(GameObject blockPrefab){
         GameObject newBlock = Instantiate(blockPrefab,new Vector3(0,0,0),Quaternion.identity);
-        return InstantiateBlock(newBlock, gridLocation);
+        return InstantiateBlock(newBlock, gridLocation, false);
     }
 
 
@@ -47,6 +52,7 @@ public class Spawner : MonoBehaviour
     Vector3 getOffset(GameObject block){
         Transform[] blocks = block.GetComponentsInChildren<Transform>();
 
+
         float[] xValues = new float[blocks.Length];
         float[] yValues = new float[blocks.Length];
         
@@ -58,7 +64,7 @@ public class Spawner : MonoBehaviour
         float y = (Math.Abs(yValues.Max()) - Math.Abs(yValues.Min()))/2;
         float x = (Math.Abs(xValues.Max()) - Math.Abs(xValues.Min()))/2;
 
-        Debug.Log(block.name + " " + x + " " + y);
+        //Debug.Log(block.name + " " + x + " " + y);
 
         return new Vector3(-x,-y,0);
     }
