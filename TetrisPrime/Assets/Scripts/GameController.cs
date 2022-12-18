@@ -5,26 +5,29 @@ using System.Drawing;
 using System;
 using System.Linq;
 
+
 public class GameController : MonoBehaviour
 {
     // Start is called before the first frame update
     [SerializeField] Spawner spawn;
     [SerializeField] Grid tetrisGrid;
+    [SerializeField] GameObject startBTN;
 
-    public GameObject currentGroup, nextGroup, holdGroup;
+    public GameObject currentGroup, nextGroup, holdGroup, projectedGroup;
 
     bool[,] grid;
     Transform[] allBlocks;
 
     [SerializeField] float fallTime, fallTimePased = 0;
 
-    bool lockStart;
+    [SerializeField] bool lockStart;
     
 
     void Start()
     {
         grid = new bool[10,24];
         allBlocks = new Transform[4];
+        lockStart = false;
     }
 
     // Update is called once per frame
@@ -48,13 +51,31 @@ public class GameController : MonoBehaviour
         if(Input.GetKeyDown(KeyCode.Z))
             rotate(90);
 
+        if(Input.GetKeyDown(KeyCode.Space)){
+            lockStart = false;
+            while(moveBlock(0,-1));
+            lockBlock();
+        }
+
+        if(Input.GetKeyDown(KeyCode.DownArrow)){
+            moveBlock(0,-1);
+        }
+            
         
         fallTimePased += Time.deltaTime;
 
         if(fallTimePased >= fallTime){
+            if(lockStart){
+                lockStart = false;
+                lockBlock();
+            }
             fallTimePased = 0;
-            moveBlock(0,-1);
+            if(!moveBlock(0,-1)){
+                lockStart = true;
+            }
         }
+
+        makeProjectedGroup();
     }
 
     
@@ -63,11 +84,15 @@ public class GameController : MonoBehaviour
         nextGroup = spawn.putBlockOnNext();
 
         initializeGroupToGrid();
+
+        startBTN.SetActive(false);
     }
 
     void holdBlock(){
         if(holdGroup == null){
             holdGroup = currentGroup;
+            Destroy(currentGroup);
+            holdGroup = spawn.putBlockOnHold(holdGroup);
             spawnBlock();
         }else{
             GameObject tempHoldGroup = holdGroup;
@@ -77,16 +102,18 @@ public class GameController : MonoBehaviour
             Destroy(currentGroup);
             
             currentGroup = spawn.putBlockOnGrid(tempHoldGroup);
-            holdGroup = tempCurrentGroup;
+            holdGroup = spawn.putBlockOnHold(tempCurrentGroup);
         }
-        holdGroup = spawn.putBlockOnHold(holdGroup);
+
+        initializeGroupToGrid();
+        
     }
 
     void spawnBlock(){
-        Destroy(currentGroup);
         currentGroup = nextGroup;
         currentGroup = spawn.putBlockOnGrid(currentGroup);
         Destroy(nextGroup);
+        Destroy(projectedGroup);
         nextGroup = spawn.putBlockOnNext();
         
         initializeGroupToGrid();
@@ -97,14 +124,33 @@ public class GameController : MonoBehaviour
 
         for(int i = 1; i < allTransform.Length; i++){
             allBlocks[i-1] = allTransform[i];
-            //Debug.Log(groupPosition[i-1].X + " " + groupPosition[i-1].sY);
+            
         }
     }
 
+    Transform[] initializeGroupToGrid(GameObject group){
+        Transform[] allTransform = group.GetComponentsInChildren<Transform>();
+        Transform[] blocks = new Transform[4];
+
+        for(int i = 1; i < allTransform.Length; i++){
+            blocks[i-1] = allTransform[i];
+        }
+
+        return blocks;
+    }
+
+    void lockBlock(){
+
+        foreach(Transform block in allBlocks){
+            Point position = tetrisGrid.localSpacetoGrid(block);
+            Debug.Log(transform.position + ": " + position.X + " " + position.Y);
+            
+            grid[position.X,position.Y] = true;
+        }
+
+        spawnBlock();
+    }
     //Movement methods
-    //Figure out edge case shit
-    //If angle is positive, try moving left then up
-    //If angle is negative, try moving right then up
     void rotate(double angle, int xOffset = 0, int yOffset = 0){
         bool canMove = true;
         // Convert the angle from degrees to radians
@@ -172,15 +218,18 @@ public class GameController : MonoBehaviour
             tetrisGrid.rotateBlock(currentGroup, angle);
             moveBlock(-xOffset,-yOffset);
         }
+
+        makeProjectedGroup();
     }
 
-    
-    void moveBlock(int xOffset, int yOffset){
+    bool moveBlock(int xOffset, int yOffset){
         bool canMove = true;
         
         foreach(Transform block in allBlocks){
 
             Point position = tetrisGrid.localSpacetoGrid(block);
+            //Debug.Log(transform.position + ": " + position.X + " " + position.Y);
+            
 
             try{
                 if(grid[position.X + xOffset,position.Y + yOffset]) canMove = false;
@@ -191,8 +240,44 @@ public class GameController : MonoBehaviour
         }
 
         if(canMove) tetrisGrid.moveBlock(currentGroup, xOffset, yOffset);
-        
+
+        makeProjectedGroup();
+
+        return canMove;
     }
-    
+
+    public void makeProjectedGroup(){
+        GameObject.Destroy(projectedGroup);
+
+        int i = 100;
+
+        foreach(Transform block in allBlocks){
+
+            Point point = tetrisGrid.localSpacetoGrid(block);
+
+            bool canMove = true;
+            int j = 0;
+
+            while(canMove){
+                try{
+                    if(grid[point.X,point.Y-j]) canMove = false;
+                }catch(Exception){
+                    canMove = false;
+                }
+                j++;
+            }
+            
+            i = Math.Min(i,j);
+        }
+
+        
+        Vector2 position = currentGroup.GetComponent<Transform>().position + new Vector3(0,-.4f*(i-2),0);
+
+        projectedGroup = GameObject.Instantiate(currentGroup,position,currentGroup.GetComponent<Transform>().rotation);
+
+        foreach(SpriteRenderer spriteRenderer in projectedGroup.GetComponentsInChildren<SpriteRenderer>()){
+            spriteRenderer.color -= new Color32(0,0,0,110);
+        }
+    } 
 
 }

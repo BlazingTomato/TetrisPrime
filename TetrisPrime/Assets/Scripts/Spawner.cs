@@ -25,6 +25,7 @@ public class Spawner : MonoBehaviour
         else
             newBlock.GetComponent<Transform>().localPosition = new Vector3(0,0,0);
 
+
         return newBlock;
     }
 
@@ -38,7 +39,6 @@ public class Spawner : MonoBehaviour
         return InstantiateBlock(newBlock, gridLocation, false);
     }
 
-
     public GameObject putBlockOnNext(){
         GameObject newBlock = Instantiate(getBlockPrefab(), new Vector3(0,0,0),Quaternion.identity);
         return InstantiateBlock(newBlock, nextLocation);
@@ -48,6 +48,8 @@ public class Spawner : MonoBehaviour
         GameObject newBlock = Instantiate(holdBlock, new Vector3(0,0,0),Quaternion.identity);
         return InstantiateBlock(newBlock, holdLocation);
     }
+
+    
 
     Vector3 getOffset(GameObject block){
         Transform[] blocks = block.GetComponentsInChildren<Transform>();

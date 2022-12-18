@@ -120,11 +120,19 @@ public class Grid : MonoBehaviour
         currentGroup.GetComponent<Transform>().position += new Vector3(xOffset * getScale(),yOffset * getScale(),0);
     }
 
+    public void moveBlock(Transform currentBlock, int xOffset, int yOffset){
+        currentBlock.GetComponent<Transform>().position += new Vector3(xOffset * getScale(),yOffset * getScale(),0);
+    }
+
+    public void moveBlock(Vector3 position, int xOffset, int yOffset){
+       position += new Vector3(xOffset * getScale(),yOffset * getScale(),0);
+    }
+
     public void rotateBlock(GameObject currentGroup, double angle){
         currentGroup.GetComponent<Transform>().Rotate(new Vector3(0,0,(float)angle));
     }
 
-    float getScale(){
+    public float getScale(){
         return ((int)camera.orthographicSize * .8f * .1f);
     }
 
@@ -147,6 +155,17 @@ public class Grid : MonoBehaviour
         float yStart = size * -.8f + .2f; // -3.8
 
         Vector3 position = block.position;
+
+        Point point = new Point(Mathf.RoundToInt((position.x-xStart)/.4f),Mathf.RoundToInt((position.y-yStart)/.4f));
+        point.Offset(xOffset,yOffset);
+
+        return point;
+    }
+
+    public Point localSpacetoGrid(Vector3 position, int xOffset = 0, int yOffset = 0){
+        int size = (int)camera.orthographicSize;
+        float xStart = size * -1f + .2f; //-4.8
+        float yStart = size * -.8f + .2f; // -3.8
 
         Point point = new Point(Mathf.RoundToInt((position.x-xStart)/.4f),Mathf.RoundToInt((position.y-yStart)/.4f));
         point.Offset(xOffset,yOffset);
