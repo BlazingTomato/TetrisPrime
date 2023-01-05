@@ -4,6 +4,8 @@ using UnityEngine;
 using System.Drawing;
 using System;
 using System.Linq;
+using TMPro;
+using UnityEngine.SceneManagement;
 
 
 public class GameController : MonoBehaviour
@@ -71,7 +73,7 @@ public class GameController : MonoBehaviour
         
         fallTimePased += Time.deltaTime;
 
-        if(fallTimePased >= fallTime*Math.Pow(Math.E,.3*level)){
+        if(fallTimePased >= fallTime*Math.Pow(Math.E,-.2*level)){
             if(lockStart){
                 lockStart = false;
                 lockBlock();
@@ -124,6 +126,9 @@ public class GameController : MonoBehaviour
         nextGroup = spawn.putBlockOnNext();
         
         initializeGroupToGrid();
+        if(!moveBlock(0,-1)){
+                SceneManager.LoadScene(0);
+            }
     }
 
     void initializeGroupToGrid(){
@@ -211,7 +216,7 @@ public class GameController : MonoBehaviour
         bool canMove = true;
         
         foreach(GameObject block in allBlocks){
-
+            if(block == null) continue;
             Point position = tetrisGrid.localSpacetoGrid(block);
             //Debug.Log(transform.position + ": " + position.X + " " + position.Y);
             
@@ -237,7 +242,7 @@ public class GameController : MonoBehaviour
         int i = 100;
 
         foreach(GameObject block in allBlocks){
-
+            if(block == null) continue;
             Point point = tetrisGrid.localSpacetoGrid(block);
 
             bool canMove = true;
@@ -332,7 +337,7 @@ public class GameController : MonoBehaviour
     void addScore(int rowsDeleted){
         totalRows += rowsDeleted;
 
-        if(level*10 + 10 > totalRows){
+        if(totalRows >= 10){
             totalRows = 0;
             level++;
         }
@@ -351,7 +356,7 @@ public class GameController : MonoBehaviour
 
     void updateScore(){
         String s = "Score: " + score + "\n" + "Level: " + level;
-        textBox.GetComponent<TextMesh>().text = s;
+        textBox.GetComponent<TMP_Text>().text = s;
     }
     
     #endregion
