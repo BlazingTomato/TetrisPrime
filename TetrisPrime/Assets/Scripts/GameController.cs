@@ -12,22 +12,29 @@ public class GameController : MonoBehaviour
     [SerializeField] Spawner spawn;
     [SerializeField] Grid tetrisGrid;
     [SerializeField] GameObject startBTN;
+    [SerializeField] GameObject textBox;
 
     public GameObject currentGroup, nextGroup, holdGroup, projectedGroup;
 
-    bool[,] grid;
-    Transform[] allBlocks;
+    GameObject[,] grid;
+    GameObject[] allBlocks;
 
     [SerializeField] float fallTime, fallTimePased = 0;
 
     [SerializeField] bool lockStart;
+    int score;
+    int level;
+    int totalRows;
     
 
     void Start()
     {
-        grid = new bool[10,24];
-        allBlocks = new Transform[4];
+        grid = new GameObject[24,10];
+        grid.Equals(null);
+        allBlocks = new GameObject[4];
         lockStart = false;
+        score = 0;
+        level = 0;
     }
 
     // Update is called once per frame
@@ -64,7 +71,7 @@ public class GameController : MonoBehaviour
         
         fallTimePased += Time.deltaTime;
 
-        if(fallTimePased >= fallTime){
+        if(fallTimePased >= fallTime*Math.Pow(Math.E,.3*level)){
             if(lockStart){
                 lockStart = false;
                 lockBlock();
@@ -78,7 +85,7 @@ public class GameController : MonoBehaviour
         makeProjectedGroup();
     }
 
-    
+    #region Spawn Methods
     public void startGame(){
         currentGroup = spawn.putBlockOnGrid();
         nextGroup = spawn.putBlockOnNext();
@@ -120,37 +127,15 @@ public class GameController : MonoBehaviour
     }
 
     void initializeGroupToGrid(){
-        Transform[] allTransform = currentGroup.GetComponentsInChildren<Transform>();
-
-        for(int i = 1; i < allTransform.Length; i++){
-            allBlocks[i-1] = allTransform[i];
-            
+        allBlocks = new GameObject[4];
+        for(int i = 0; i < 4; i++){
+            allBlocks[i] = currentGroup.transform.GetChild(i).gameObject;
         }
     }
 
-    Transform[] initializeGroupToGrid(GameObject group){
-        Transform[] allTransform = group.GetComponentsInChildren<Transform>();
-        Transform[] blocks = new Transform[4];
+    #endregion
 
-        for(int i = 1; i < allTransform.Length; i++){
-            blocks[i-1] = allTransform[i];
-        }
-
-        return blocks;
-    }
-
-    void lockBlock(){
-
-        foreach(Transform block in allBlocks){
-            Point position = tetrisGrid.localSpacetoGrid(block);
-            Debug.Log(transform.position + ": " + position.X + " " + position.Y);
-            
-            grid[position.X,position.Y] = true;
-        }
-
-        spawnBlock();
-    }
-    //Movement methods
+    #region Movement Methods
     void rotate(double angle, int xOffset = 0, int yOffset = 0){
         bool canMove = true;
         // Convert the angle from degrees to radians
@@ -194,7 +179,7 @@ public class GameController : MonoBehaviour
 
         foreach(Point block in finalVerticies){
             try{
-                if(grid[block.X,block.Y]) {
+                if(grid[block.Y,block.X] != null) {
                     if(Math.Abs(xOffset) + Math.Abs(yOffset) > 0) return;
 
                     rotate(angle, xOffset + 1, yOffset);
@@ -225,14 +210,14 @@ public class GameController : MonoBehaviour
     bool moveBlock(int xOffset, int yOffset){
         bool canMove = true;
         
-        foreach(Transform block in allBlocks){
+        foreach(GameObject block in allBlocks){
 
             Point position = tetrisGrid.localSpacetoGrid(block);
             //Debug.Log(transform.position + ": " + position.X + " " + position.Y);
             
 
             try{
-                if(grid[position.X + xOffset,position.Y + yOffset]) canMove = false;
+                if(grid[position.Y + yOffset,position.X + xOffset] != null) canMove = false;
             }catch(Exception){
                 canMove = false;
             }
@@ -251,7 +236,7 @@ public class GameController : MonoBehaviour
 
         int i = 100;
 
-        foreach(Transform block in allBlocks){
+        foreach(GameObject block in allBlocks){
 
             Point point = tetrisGrid.localSpacetoGrid(block);
 
@@ -260,7 +245,7 @@ public class GameController : MonoBehaviour
 
             while(canMove){
                 try{
-                    if(grid[point.X,point.Y-j]) canMove = false;
+                    if(grid[point.Y-j,point.X] != null) canMove = false;
                 }catch(Exception){
                     canMove = false;
                 }
@@ -279,5 +264,96 @@ public class GameController : MonoBehaviour
             spriteRenderer.color -= new Color32(0,0,0,110);
         }
     } 
+
+    #endregion
+    
+    #region Game Logic Methods
+
+    bool isRowFull(int y){
+        for(int i = 0; i < grid.GetLength(1); i++){
+            if(grid[y,i] == null)
+                return false;
+        }
+
+        return true;
+    }
+
+    void decreaseRowsAbove(int y){
+        for(int i = y; i < grid.GetLength(0); i++){
+            decreaseRow(i);
+        }
+    }
+
+    void decreaseRow(int y){
+        for(int i = 0; i < grid.GetLength(1); i++){
+            if(grid[y,i] != null){
+                grid[y-1,i] = grid[y,i];
+                grid[y,i] = null;
+
+                tetrisGrid.moveBlock(grid[y-1,i],0,-1);
+            }
+        }
+    }
+
+    void deleteRow(int y){
+        for(int i = 0; i < grid.GetLength(1); i++){
+            Destroy(grid[y,i].gameObject);
+            grid[y,i] = null;
+        }
+    }
+
+    int deleteFullRows(){
+        int rowsDeleted = 0;
+        for(int i = 0; i < grid.GetLength(0); i++){
+            if(isRowFull(i)){
+                deleteRow(i);
+                decreaseRowsAbove(i+1);
+                rowsDeleted++;
+                i--;
+            }
+        }
+
+        return rowsDeleted;
+    }
+
+    void lockBlock(){
+
+        foreach(GameObject block in allBlocks){
+            Point position = tetrisGrid.localSpacetoGrid(block);
+            //Debug.Log(transform.position + ": " + position.X + " " + position.Y);
+            
+            grid[position.Y,position.X] = block;
+        }
+
+        addScore(deleteFullRows());
+        spawnBlock();
+    }
+
+    void addScore(int rowsDeleted){
+        totalRows += rowsDeleted;
+
+        if(level*10 + 10 > totalRows){
+            totalRows = 0;
+            level++;
+        }
+
+        if(rowsDeleted == 1) score += 40 *(level + 1);
+
+        if(rowsDeleted == 2) score += 100 * (level + 1);
+
+        if(rowsDeleted == 3) score += 300 * (level + 1);
+
+        if(rowsDeleted == 4) score += 1200 * (level + 1);
+
+        if(rowsDeleted > 0)
+            updateScore();
+    }
+
+    void updateScore(){
+        String s = "Score: " + score + "\n" + "Level: " + level;
+        textBox.GetComponent<TextMesh>().text = s;
+    }
+    
+    #endregion
 
 }
